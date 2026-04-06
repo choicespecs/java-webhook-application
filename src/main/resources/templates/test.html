@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webhook Simulator - Test</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">
+            <i class="fas fa-webhook me-2"></i>Webhook Simulator
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="/"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/history"><i class="fas fa-history me-1"></i>History</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="/test"><i class="fas fa-flask me-1"></i>Test</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/learn"><i class="fas fa-graduation-cap me-1"></i>Learn</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/demo"><i class="fas fa-play-circle me-1"></i>Demo</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <!-- curl Reference -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="mb-0"><i class="fas fa-terminal me-2 text-secondary"></i>curl Reference</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-2">Send a webhook using curl:</p>
+                    <pre class="bg-dark text-light p-3 rounded small">curl -X POST http://localhost:8080/api/webhook/receive \
+  -H "Content-Type: application/json" \
+  -d '{
+    "eventType": "order.created",
+    "eventId": "evt-001",
+    "timestamp": "2024-01-01T12:00:00",
+    "data": {"orderId": "ORD-123", "amount": 99.99}
+  }'</pre>
+                </div>
+            </div>
+
+            <!-- Test Form -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="mb-0"><i class="fas fa-flask me-2 text-success"></i>Manual Webhook Test</h5>
+                </div>
+                <div class="card-body">
+                    <form id="test-form">
+                        <div class="mb-3">
+                            <label for="t-eventType" class="form-label fw-semibold">Event Type</label>
+                            <input type="text" class="form-control" id="t-eventType" value="order.created" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="t-eventId" class="form-label fw-semibold">Event ID</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="t-eventId" value="evt-001" required>
+                                <button type="button" class="btn btn-outline-secondary" id="t-generate-btn">
+                                    <i class="fas fa-random"></i> Random
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="t-timestamp" class="form-label fw-semibold">Timestamp</label>
+                            <input type="text" class="form-control" id="t-timestamp" placeholder="yyyy-MM-ddTHH:mm:ss">
+                        </div>
+                        <div class="mb-3">
+                            <label for="t-data" class="form-label fw-semibold">JSON Data <span class="text-muted fw-normal">(optional)</span></label>
+                            <textarea class="form-control font-monospace" id="t-data" rows="5">{"orderId": "ORD-123", "amount": 99.99, "currency": "USD"}</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="t-signature" class="form-label fw-semibold">X-Webhook-Signature <span class="text-muted fw-normal">(optional)</span></label>
+                            <input type="text" class="form-control font-monospace" id="t-signature" placeholder="sha256=...">
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-paper-plane me-2"></i>Send Webhook
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="t-load-template-btn">
+                                <i class="fas fa-file-alt me-2"></i>Load Example
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Response Panel -->
+                    <div id="test-response" class="mt-4" style="display:none;">
+                        <hr>
+                        <h6 class="fw-semibold mb-2"><i class="fas fa-reply me-2"></i>Response</h6>
+                        <div id="test-response-status" class="mb-2"></div>
+                        <pre id="test-response-body" class="bg-light p-3 rounded small"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Reference -->
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="mb-0"><i class="fas fa-book me-2 text-info"></i>API Reference</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <thead class="table-light">
+                            <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><span class="badge bg-success">POST</span></td><td><code>/api/webhook/receive</code></td><td>Receive a webhook</td></tr>
+                            <tr><td><span class="badge bg-primary">GET</span></td><td><code>/api/webhook/history</code></td><td>Get webhook history</td></tr>
+                            <tr><td><span class="badge bg-primary">GET</span></td><td><code>/api/webhook/stats</code></td><td>Get basic stats</td></tr>
+                            <tr><td><span class="badge bg-primary">GET</span></td><td><code>/api/stats</code></td><td>Get full stats with queue size</td></tr>
+                            <tr><td><span class="badge bg-danger">DELETE</span></td><td><code>/api/webhook/history</code></td><td>Clear history</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script>
+    function generateId() {
+        return 'evt-' + Math.random().toString(36).substr(2, 9);
+    }
+
+    function currentTimestamp() {
+        const now = new Date();
+        return now.toISOString().substring(0, 19);
+    }
+
+    function buildPayload() {
+        let data = null;
+        const dataStr = $('#t-data').val().trim();
+        if (dataStr) {
+            try {
+                data = JSON.parse(dataStr);
+            } catch(e) {
+                alert('Invalid JSON in data field: ' + e.message);
+                return null;
+            }
+        }
+        return {
+            eventType: $('#t-eventType').val().trim(),
+            eventId: $('#t-eventId').val().trim(),
+            timestamp: $('#t-timestamp').val().trim() || currentTimestamp(),
+            data: data
+        };
+    }
+
+    $(document).ready(function() {
+        // Set default timestamp
+        $('#t-timestamp').val(currentTimestamp());
+
+        $('#t-generate-btn').on('click', function() {
+            $('#t-eventId').val(generateId());
+        });
+
+        $('#t-load-template-btn').on('click', function() {
+            $('#t-eventType').val('payment.processed');
+            $('#t-eventId').val(generateId());
+            $('#t-timestamp').val(currentTimestamp());
+            $('#t-data').val(JSON.stringify({
+                paymentId: 'PAY-' + Math.floor(Math.random() * 10000),
+                amount: parseFloat((Math.random() * 500 + 10).toFixed(2)),
+                currency: 'USD',
+                status: 'completed',
+                customerId: 'CUST-' + Math.floor(Math.random() * 1000)
+            }, null, 2));
+        });
+
+        $('#test-form').on('submit', function(e) {
+            e.preventDefault();
+            const payload = buildPayload();
+            if (!payload) return;
+
+            const headers = { 'Content-Type': 'application/json' };
+            const sig = $('#t-signature').val().trim();
+            if (sig) headers['X-Webhook-Signature'] = sig;
+
+            $.ajax({
+                url: '/api/webhook/receive',
+                method: 'POST',
+                contentType: 'application/json',
+                headers: headers,
+                data: JSON.stringify(payload),
+                success: function(response, status, xhr) {
+                    $('#test-response').show();
+                    $('#test-response-status').html(
+                        `<span class="badge bg-success fs-6">HTTP 202 Accepted</span>`
+                    );
+                    $('#test-response-body').text(JSON.stringify(response, null, 2));
+                },
+                error: function(xhr) {
+                    $('#test-response').show();
+                    $('#test-response-status').html(
+                        `<span class="badge bg-danger fs-6">HTTP ${xhr.status} ${xhr.statusText}</span>`
+                    );
+                    try {
+                        $('#test-response-body').text(JSON.stringify(JSON.parse(xhr.responseText), null, 2));
+                    } catch(e) {
+                        $('#test-response-body').text(xhr.responseText);
+                    }
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>

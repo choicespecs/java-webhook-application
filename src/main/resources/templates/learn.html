@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webhook Simulator - Learn</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .flow-arrow {
+            font-size: 1.5rem;
+            color: #6c757d;
+            line-height: 1;
+        }
+        .flow-step {
+            border-radius: 0.75rem;
+            transition: box-shadow 0.15s ease;
+        }
+        .flow-step:hover {
+            box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.1) !important;
+        }
+        .lifecycle-step {
+            position: relative;
+        }
+        .lifecycle-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            right: -1.25rem;
+            width: 1.25rem;
+            height: 2px;
+            background: #dee2e6;
+        }
+        .hmac-box {
+            background: #f8f9fa;
+            border-left: 4px solid #0d6efd;
+            border-radius: 0 0.5rem 0.5rem 0;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 0.8rem;
+        }
+        .concept-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .section-divider {
+            border: none;
+            border-top: 2px solid #f0f0f0;
+            margin: 2.5rem 0;
+        }
+        .backoff-bar {
+            height: 28px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            padding: 0 0.75rem;
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .toc-link {
+            text-decoration: none;
+            color: #495057;
+            font-size: 0.9rem;
+            display: block;
+            padding: 0.2rem 0;
+        }
+        .toc-link:hover { color: #0d6efd; }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">
+            <i class="fas fa-webhook me-2"></i>Webhook Simulator
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="/"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/history"><i class="fas fa-history me-1"></i>History</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/test"><i class="fas fa-flask me-1"></i>Test</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="/learn"><i class="fas fa-graduation-cap me-1"></i>Learn</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4 pb-5">
+    <div class="row">
+
+        <!-- Sticky Table of Contents -->
+        <div class="col-lg-3 d-none d-lg-block">
+            <div class="card border-0 shadow-sm" style="position: sticky; top: 1.5rem;">
+                <div class="card-body">
+                    <h6 class="fw-bold text-uppercase text-muted small mb-3">On this page</h6>
+                    <a class="toc-link" href="#what-is-webhook">What is a Webhook?</a>
+                    <a class="toc-link" href="#how-webhooks-work">How Webhooks Work</a>
+                    <a class="toc-link" href="#this-app">This Application</a>
+                    <a class="toc-link" href="#lifecycle">Webhook Lifecycle</a>
+                    <a class="toc-link" href="#signatures">Security &amp; Signatures</a>
+                    <a class="toc-link" href="#retry">Retry &amp; Reliability</a>
+                    <a class="toc-link" href="#websockets">Real-time Updates</a>
+                    <a class="toc-link" href="#try-it">Try It Now</a>
+                    <hr class="my-3">
+                    <a href="/test" class="btn btn-success btn-sm w-100">
+                        <i class="fas fa-paper-plane me-1"></i>Send a Webhook
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-lg-9">
+
+            <h1 class="fw-bold mb-1">Understanding Webhooks</h1>
+            <p class="text-muted mb-4">A practical guide using this application as a live example.</p>
+
+            <!-- ================================================ -->
+            <!-- SECTION 1: What is a Webhook? -->
+            <!-- ================================================ -->
+            <h2 id="what-is-webhook" class="h4 fw-bold mb-3">
+                <i class="fas fa-question-circle text-primary me-2"></i>What is a Webhook?
+            </h2>
+
+            <p>A <strong>webhook</strong> is a way for one system to notify another system that something happened — in real time, automatically, without polling.</p>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="card border-0 bg-light h-100">
+                        <div class="card-body">
+                            <h6 class="fw-semibold"><i class="fas fa-sync-alt text-warning me-2"></i>Polling (old way)</h6>
+                            <p class="small text-muted mb-0">Your app repeatedly asks: <em>"Did anything happen yet?"</em> — every few seconds, forever. Wasteful and slow.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card border-0 bg-light h-100">
+                        <div class="card-body">
+                            <h6 class="fw-semibold"><i class="fas fa-bell text-success me-2"></i>Webhooks (modern way)</h6>
+                            <p class="small text-muted mb-0">The source system calls <em>you</em> the moment something happens. One HTTP POST, instant notification.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <h6 class="fw-semibold mb-2">Real-world examples</h6>
+                    <ul class="mb-0 small">
+                        <li><strong>Stripe</strong> sends a webhook when a payment succeeds or fails</li>
+                        <li><strong>GitHub</strong> sends a webhook when code is pushed or a PR is opened</li>
+                        <li><strong>Shopify</strong> sends a webhook when a new order is placed</li>
+                        <li><strong>Twilio</strong> sends a webhook when an SMS is received</li>
+                    </ul>
+                </div>
+            </div>
+
+            <hr class="section-divider">
+
+            <!-- ================================================ -->
+            <!-- SECTION 2: How Webhooks Work -->
+            <!-- ================================================ -->
+            <h2 id="how-webhooks-work" class="h4 fw-bold mb-3">
+                <i class="fas fa-route text-success me-2"></i>How Webhooks Work
+            </h2>
+
+            <p class="text-muted small mb-4">A webhook is simply an HTTP POST request. Here is the end-to-end flow:</p>
+
+            <!-- Flow diagram -->
+            <div class="d-flex flex-column gap-2 mb-4">
+
+                <div class="card flow-step border-0 shadow-sm">
+                    <div class="card-body d-flex align-items-start gap-3 py-3">
+                        <div class="concept-icon bg-primary bg-opacity-10 text-primary">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <div>
+                            <div class="fw-semibold">1. An event occurs in the source system</div>
+                            <div class="text-muted small">A user places an order, a payment is charged, a file is uploaded, etc.</div>
+                        </div>
+                        <span class="badge bg-primary ms-auto align-self-center">Trigger</span>
+                    </div>
+                </div>
+
+                <div class="text-center flow-arrow"><i class="fas fa-arrow-down"></i></div>
+
+                <div class="card flow-step border-0 shadow-sm">
+                    <div class="card-body d-flex align-items-start gap-3 py-3">
+                        <div class="concept-icon bg-info bg-opacity-10 text-info">
+                            <i class="fas fa-paper-plane"></i>
+                        </div>
+                        <div>
+                            <div class="fw-semibold">2. Source sends an HTTP POST to your endpoint</div>
+                            <div class="text-muted small">The source system makes a POST request with a JSON body describing the event, and optionally a signature header for security.</div>
+                            <div class="mt-2">
+                                <code class="small">POST https://your-app.com/api/webhook/receive</code><br>
+                                <code class="small">Content-Type: application/json</code><br>
+                                <code class="small">X-Webhook-Signature: sha256=abc123...</code>
+                            </div>
+                        </div>
+                        <span class="badge bg-info ms-auto align-self-center">HTTP POST</span>
+                    </div>
+                </div>
+
+                <div class="text-center flow-arrow"><i class="fas fa-arrow-down"></i></div>
+
+                <div class="card flow-step border-0 shadow-sm">
+                    <div class="card-body d-flex align-items-start gap-3 py-3">
+                        <div class="concept-icon bg-warning bg-opacity-10 text-warning">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div>
+                            <div class="fw-semibold">3. Your receiver validates &amp; acknowledges immediately</div>
+                            <div class="text-muted small">You verify the signature, return <strong>HTTP 202 Accepted</strong> within a few seconds, then process asynchronously. The source expects a fast response — if you take too long, it will retry.</div>
+                        </div>
+                        <span class="badge bg-warning text-dark ms-auto align-self-center">HTTP 202</span>
+                    </div>
+                </div>
+
+                <div class="text-center flow-arrow"><i class="fas fa-arrow-down"></i></div>
+
+                <div class="card flow-step border-0 shadow-sm">
+                    <div class="card-body d-flex align-items-start gap-3 py-3">
+                        <div class="concept-icon bg-success bg-opacity-10 text-success">
+                            <i class="fas fa-cogs"></i>
+                        </div>
+                        <div>
+                            <div class="fw-semibold">4. Your system processes the event asynchronously</div>
+                            <div class="text-muted small">Update a database, send an email, trigger another service. Processing happens in the background — decoupled from the acknowledgment.</div>
+                        </div>
+                        <span class="badge bg-success ms-auto align-self-center">Async</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <hr class="section-divider">
+
+            <!-- ================================================ -->
+            <!-- SECTION 3: This Application -->
+            <!-- ================================================ -->
+            <h2 id="this-app" class="h4 fw-bold mb-3">
+                <i class="fas fa-project-diagram text-warning me-2"></i>How This Application Works
+            </h2>
+
+            <p class="text-muted small mb-3">Here is exactly what happens when you send a request to <code>POST /api/webhook/receive</code>:</p>
+
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:2rem">#</th>
+                                <th>Component</th>
+                                <th>What it does</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold text-primary">1</td>
+                                <td><code>WebhookController</code></td>
+                                <td class="small">Receives the HTTP POST, reads the <code>X-Webhook-Signature</code> header, validates the request body with Spring Validation (<code>@Valid</code>)</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold text-primary">2</td>
+                                <td><code>WebhookService</code></td>
+                                <td class="small">Verifies the HMAC-SHA256 signature if provided, creates a <code>WebhookRecord</code> with status <code>QUEUED</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold text-primary">3</td>
+                                <td><code>WebhookHistoryService</code></td>
+                                <td class="small">Stores the record in an in-memory <code>ConcurrentLinkedDeque</code> (up to 1,000 records)</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold text-primary">4</td>
+                                <td><code>WebhookQueue</code></td>
+                                <td class="small">Places the record on a <code>LinkedBlockingQueue</code> (capacity 500). Three background threads pick it up for processing</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold text-primary">5</td>
+                                <td>Worker threads</td>
+                                <td class="small">Each thread calls <code>WebhookService.processRecord()</code> — retrying up to 3 times with exponential backoff on failure</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold text-primary">6</td>
+                                <td>WebSocket broadcast</td>
+                                <td class="small">After each state change, updated stats and history are pushed to all connected browsers over STOMP/SockJS — no page refresh needed</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="alert alert-info d-flex gap-2 align-items-start mb-4">
+                <i class="fas fa-lightbulb mt-1 flex-shrink-0"></i>
+                <div class="small">
+                    <strong>Why return 202 before processing?</strong> The source system (e.g. Stripe) has a short timeout (often 5–30 seconds). If you do heavy work synchronously — like sending emails or hitting a slow database — you risk timing out, causing the source to think delivery failed and retry. By queuing immediately and returning 202, you decouple receipt from processing.
+                </div>
+            </div>
+
+            <hr class="section-divider">
+
+            <!-- ================================================ -->
+            <!-- SECTION 4: Lifecycle -->
+            <!-- ================================================ -->
+            <h2 id="lifecycle" class="h4 fw-bold mb-3">
+                <i class="fas fa-circle-notch text-info me-2"></i>Webhook Lifecycle
+            </h2>
+
+            <p class="text-muted small mb-4">Every webhook record in this app passes through these states:</p>
+
+            <!-- Lifecycle diagram -->
+            <div class="d-flex justify-content-start gap-2 flex-wrap mb-3">
+                <div class="lifecycle-step text-center" style="min-width:100px">
+                    <div class="badge badge-queued py-2 px-3 fs-6 mb-1 d-block">QUEUED</div>
+                    <div class="text-muted" style="font-size:0.7rem">Received &amp; waiting</div>
+                </div>
+                <div class="d-flex align-items-center text-muted px-1"><i class="fas fa-arrow-right"></i></div>
+                <div class="lifecycle-step text-center" style="min-width:110px">
+                    <div class="badge badge-processing py-2 px-3 fs-6 mb-1 d-block">PROCESSING</div>
+                    <div class="text-muted" style="font-size:0.7rem">Worker picked up</div>
+                </div>
+                <div class="d-flex align-items-center text-muted px-1"><i class="fas fa-arrow-right"></i></div>
+                <div class="d-flex flex-column gap-1">
+                    <div class="text-center" style="min-width:100px">
+                        <div class="badge badge-success py-2 px-3 fs-6 mb-1 d-block">SUCCESS</div>
+                        <div class="text-muted" style="font-size:0.7rem">Processed OK</div>
+                    </div>
+                    <div class="text-center" style="min-width:100px">
+                        <div class="badge badge-failed py-2 px-3 fs-6 mb-1 d-block">FAILED</div>
+                        <div class="text-muted" style="font-size:0.7rem">Max retries exceeded</div>
+                    </div>
+                </div>
+            </div>
+
+            <p class="small text-muted mb-4">The History page shows all records with their current status. A badge color tells you at a glance where each webhook stands.</p>
+
+            <hr class="section-divider">
+
+            <!-- ================================================ -->
+            <!-- SECTION 5: Signatures -->
+            <!-- ================================================ -->
+            <h2 id="signatures" class="h4 fw-bold mb-3">
+                <i class="fas fa-lock text-danger me-2"></i>Security &amp; Signatures
+            </h2>
+
+            <p>Without a signature, any client on the internet can POST to your webhook endpoint and pretend to be GitHub, Stripe, etc. <strong>HMAC-SHA256 signatures</strong> let you verify that a request genuinely came from the trusted source.</p>
+
+            <h6 class="fw-semibold mt-3 mb-2">How HMAC-SHA256 works</h6>
+            <div class="row g-2 mb-3">
+                <div class="col-md-6">
+                    <div class="card border-0 bg-light h-100">
+                        <div class="card-body small">
+                            <div class="fw-semibold mb-1"><i class="fas fa-paper-plane text-primary me-1"></i>Sender (source system)</div>
+                            <ol class="mb-0 ps-3">
+                                <li>Serializes the payload to JSON</li>
+                                <li>Computes <code>HMAC-SHA256(json, sharedSecret)</code></li>
+                                <li>Sends signature in header: <code>X-Webhook-Signature: sha256=&lt;hex&gt;</code></li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card border-0 bg-light h-100">
+                        <div class="card-body small">
+                            <div class="fw-semibold mb-1"><i class="fas fa-server text-success me-1"></i>Receiver (this app)</div>
+                            <ol class="mb-0 ps-3">
+                                <li>Reads the raw request body</li>
+                                <li>Computes the same <code>HMAC-SHA256</code> using the shared secret</li>
+                                <li>Compares — if they match, the payload is authentic</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hmac-box p-3 mb-3">
+                <div class="text-muted small mb-1">// WebhookService.java — signature generation</div>
+                <div>Mac mac = Mac.getInstance(<span class="text-success">"HmacSHA256"</span>);</div>
+                <div>mac.init(<span class="text-info">new</span> SecretKeySpec(secret.getBytes(), <span class="text-success">"HmacSHA256"</span>));</div>
+                <div>byte[] hash = mac.doFinal(json.getBytes(StandardCharsets.UTF_8));</div>
+                <div>String signature = <span class="text-success">"sha256="</span> + HexFormat.of().formatHex(hash);</div>
+            </div>
+
+            <div class="alert alert-warning d-flex gap-2 align-items-start mb-4">
+                <i class="fas fa-exclamation-triangle mt-1 flex-shrink-0"></i>
+                <div class="small">
+                    <strong>Important:</strong> The signature is <em>optional</em> in this app — validation only runs when the <code>X-Webhook-Signature</code> header is present. In production, always require and verify signatures. The shared secret is configured via <code>webhook.secret</code> in <code>application.properties</code>.
+                </div>
+            </div>
+
+            <hr class="section-divider">
+
+            <!-- ================================================ -->
+            <!-- SECTION 6: Retry & Reliability -->
+            <!-- ================================================ -->
+            <h2 id="retry" class="h4 fw-bold mb-3">
+                <i class="fas fa-redo text-warning me-2"></i>Retry Logic &amp; Reliability
+            </h2>
+
+            <p>Networks fail. Downstream services crash. A robust webhook receiver should handle transient errors gracefully without overwhelming the upstream system. This app uses <strong>exponential backoff with a retry cap</strong>.</p>
+
+            <h6 class="fw-semibold mt-3 mb-2">Retry schedule</h6>
+            <div class="d-flex flex-column gap-2 mb-3">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="text-muted small" style="width:4rem">Attempt 1</span>
+                    <div class="backoff-bar bg-success" style="width:15%">Immediate</div>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="text-muted small" style="width:4rem">Retry 1</span>
+                    <div class="backoff-bar bg-warning text-dark" style="width:30%">Wait 1 second</div>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="text-muted small" style="width:4rem">Retry 2</span>
+                    <div class="backoff-bar bg-orange" style="width:50%; background:#fd7e14;">Wait 2 seconds</div>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="text-muted small" style="width:4rem">Retry 3</span>
+                    <div class="backoff-bar bg-danger" style="width:75%">Wait 4 seconds → FAILED</div>
+                </div>
+            </div>
+
+            <div class="card border-0 bg-light mb-4">
+                <div class="card-body small">
+                    <div class="fw-semibold mb-1">Why exponential backoff?</div>
+                    <p class="mb-1">If many webhooks fail at once and all retry immediately, you create a <strong>thundering herd</strong> — hammering an already-struggling service. Spreading retries out with increasing delays gives the downstream service time to recover.</p>
+                    <div class="fw-semibold mb-1 mt-2">Why a retry cap?</div>
+                    <p class="mb-0">Retrying indefinitely is rarely helpful. After 3 attempts the webhook is marked <code>FAILED</code> and stored in history so you can inspect it, without burning threads forever on a permanently broken event.</p>
+                </div>
+            </div>
+
+            <div class="hmac-box p-3 mb-4">
+                <div class="text-muted small mb-1">// WebhookQueue.java — retry loop</div>
+                <div><span class="text-info">for</span> (<span class="text-info">int</span> attempt = <span class="text-warning">0</span>; attempt &lt;= MAX_RETRIES; attempt++) {</div>
+                <div>&nbsp;&nbsp;<span class="text-info">if</span> (attempt &gt; <span class="text-warning">0</span>) Thread.sleep(BACKOFF_MS[attempt - <span class="text-warning">1</span>]); <span class="text-muted">// 1000, 2000, 4000 ms</span></div>
+                <div>&nbsp;&nbsp;webhookService.processRecord(record); <span class="text-muted">// throws on failure</span></div>
+                <div>&nbsp;&nbsp;<span class="text-info">return</span>; <span class="text-muted">// success — stop retrying</span></div>
+                <div>}</div>
+            </div>
+
+            <hr class="section-divider">
+
+            <!-- ================================================ -->
+            <!-- SECTION 7: WebSockets -->
+            <!-- ================================================ -->
+            <h2 id="websockets" class="h4 fw-bold mb-3">
+                <i class="fas fa-wifi text-success me-2"></i>Real-time Updates via WebSockets
+            </h2>
+
+            <p>The dashboard updates instantly when a new webhook arrives — without polling. This is done with <strong>WebSockets</strong> using the STOMP protocol over SockJS.</p>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="card border-0 bg-light h-100 text-center p-3">
+                        <div class="concept-icon bg-primary bg-opacity-10 text-primary mx-auto mb-2">
+                            <i class="fas fa-plug"></i>
+                        </div>
+                        <div class="fw-semibold small">1. Browser connects</div>
+                        <div class="text-muted" style="font-size:0.75rem">Opens a persistent connection to <code>/ws</code> via SockJS</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-0 bg-light h-100 text-center p-3">
+                        <div class="concept-icon bg-info bg-opacity-10 text-info mx-auto mb-2">
+                            <i class="fas fa-rss"></i>
+                        </div>
+                        <div class="fw-semibold small">2. Browser subscribes</div>
+                        <div class="text-muted" style="font-size:0.75rem">Subscribes to <code>/topic/stats</code> and <code>/topic/history</code></div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-0 bg-light h-100 text-center p-3">
+                        <div class="concept-icon bg-success bg-opacity-10 text-success mx-auto mb-2">
+                            <i class="fas fa-broadcast-tower"></i>
+                        </div>
+                        <div class="fw-semibold small">3. Server pushes updates</div>
+                        <div class="text-muted" style="font-size:0.75rem">After each webhook, the server broadcasts to all subscribers</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hmac-box p-3 mb-3">
+                <div class="text-muted small mb-1">// dashboard.js — STOMP subscription</div>
+                <div><span class="text-info">var</span> socket = <span class="text-info">new</span> SockJS(<span class="text-success">'/ws'</span>);</div>
+                <div>stompClient = Stomp.over(socket);</div>
+                <div>stompClient.connect({}, <span class="text-info">function</span>(frame) {</div>
+                <div>&nbsp;&nbsp;stompClient.subscribe(<span class="text-success">'/topic/stats'</span>, <span class="text-info">function</span>(msg) { updateStats(JSON.parse(msg.body)); });</div>
+                <div>&nbsp;&nbsp;stompClient.subscribe(<span class="text-success">'/topic/history'</span>, <span class="text-info">function</span>(msg) { updateTable(JSON.parse(msg.body)); });</div>
+                <div>});</div>
+            </div>
+
+            <div class="alert alert-secondary d-flex gap-2 align-items-start mb-4">
+                <i class="fas fa-info-circle mt-1 flex-shrink-0"></i>
+                <div class="small">
+                    <strong>SockJS fallback:</strong> SockJS automatically falls back to long-polling if WebSockets are not available (e.g. behind certain proxies). The green/red <em>Connected</em> badge in the dashboard navbar shows the live connection status.
+                </div>
+            </div>
+
+            <hr class="section-divider">
+
+            <!-- ================================================ -->
+            <!-- SECTION 8: Try It -->
+            <!-- ================================================ -->
+            <h2 id="try-it" class="h4 fw-bold mb-3">
+                <i class="fas fa-play-circle text-success me-2"></i>Try It Now
+            </h2>
+
+            <p class="text-muted small mb-3">See everything you just read in action. Open two browser tabs:</p>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="fw-semibold mb-2"><span class="badge bg-primary me-1">Tab 1</span> Watch</div>
+                            <p class="text-muted small mb-3">Open the dashboard to watch real-time updates.</p>
+                            <a href="/" target="_blank" class="btn btn-outline-primary btn-sm w-100">
+                                <i class="fas fa-tachometer-alt me-1"></i>Open Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="fw-semibold mb-2"><span class="badge bg-success me-1">Tab 2</span> Send</div>
+                            <p class="text-muted small mb-3">Send test webhooks and watch Tab 1 update instantly.</p>
+                            <a href="/test" target="_blank" class="btn btn-success btn-sm w-100">
+                                <i class="fas fa-paper-plane me-1"></i>Open Test Page
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <p class="text-muted small mb-2">Or send directly from the terminal:</p>
+            <pre class="bg-dark text-light p-3 rounded small">curl -X POST http://localhost:8080/api/webhook/receive \
+  -H "Content-Type: application/json" \
+  -d '{
+    "eventType": "order.created",
+    "eventId": "learn-demo-001",
+    "timestamp": "2024-01-01T12:00:00",
+    "data": {"orderId": "ORD-42", "amount": 99.99}
+  }'</pre>
+
+            <p class="text-muted small mt-3">Then check the <a href="/history">History page</a> to see the full lifecycle record including status, timestamps, and retry count.</p>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

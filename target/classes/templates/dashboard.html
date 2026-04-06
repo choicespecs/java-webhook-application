@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webhook Simulator - Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">
+            <i class="fas fa-webhook me-2"></i>Webhook Simulator
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link active" href="/"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/history"><i class="fas fa-history me-1"></i>History</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/test"><i class="fas fa-flask me-1"></i>Test</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/learn"><i class="fas fa-graduation-cap me-1"></i>Learn</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/demo"><i class="fas fa-play-circle me-1"></i>Demo</a>
+                </li>
+            </ul>
+            <span class="navbar-text me-3">
+                <span id="ws-status" class="badge bg-secondary">
+                    <i class="fas fa-circle me-1"></i>Connecting...
+                </span>
+            </span>
+        </div>
+    </div>
+</nav>
+
+<div class="container-fluid mt-4">
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="card stat-card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="stat-icon bg-primary bg-opacity-10 text-primary rounded-3 p-3 me-3">
+                        <i class="fas fa-inbox fa-lg"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">Total Received</div>
+                        <div class="fs-3 fw-bold" id="stat-total">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card stat-card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="stat-icon bg-success bg-opacity-10 text-success rounded-3 p-3 me-3">
+                        <i class="fas fa-check-circle fa-lg"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">Successful</div>
+                        <div class="fs-3 fw-bold text-success" id="stat-success">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card stat-card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="stat-icon bg-danger bg-opacity-10 text-danger rounded-3 p-3 me-3">
+                        <i class="fas fa-times-circle fa-lg"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">Failed</div>
+                        <div class="fs-3 fw-bold text-danger" id="stat-failed">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card stat-card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="stat-icon bg-warning bg-opacity-10 text-warning rounded-3 p-3 me-3">
+                        <i class="fas fa-clock fa-lg"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">Queued / Processing</div>
+                        <div class="fs-3 fw-bold text-warning" id="stat-pending">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- Recent Webhooks Table -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-list me-2 text-primary"></i>Recent Webhooks</h5>
+                    <span class="badge bg-primary" id="recent-count">0 events</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="recent-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Event Type</th>
+                                    <th>Event ID</th>
+                                    <th>Status</th>
+                                    <th>Received At</th>
+                                    <th>Retries</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recent-tbody">
+                                <tr id="empty-row">
+                                    <td colspan="5" class="text-center text-muted py-4">
+                                        <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                                        No webhooks received yet
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Send Test Webhook Form -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="mb-0"><i class="fas fa-paper-plane me-2 text-success"></i>Send Test Webhook</h5>
+                </div>
+                <div class="card-body">
+                    <form id="send-form">
+                        <div class="mb-3">
+                            <label for="eventType" class="form-label fw-semibold">Event Type</label>
+                            <select class="form-select" id="eventType" name="eventType">
+                                <option value="order.created">order.created</option>
+                                <option value="user.registered">user.registered</option>
+                                <option value="payment.processed">payment.processed</option>
+                                <option value="custom">custom</option>
+                            </select>
+                        </div>
+                        <div class="mb-3" id="custom-event-type-group" style="display:none;">
+                            <label for="customEventType" class="form-label fw-semibold">Custom Event Type</label>
+                            <input type="text" class="form-control" id="customEventType" placeholder="e.g. product.updated">
+                        </div>
+                        <div class="mb-3">
+                            <label for="eventId" class="form-label fw-semibold">Event ID</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="eventId" placeholder="evt-12345">
+                                <button type="button" class="btn btn-outline-secondary" id="generate-id-btn" title="Generate random ID">
+                                    <i class="fas fa-random"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="payload-data" class="form-label fw-semibold">Custom JSON Data <span class="text-muted fw-normal">(optional)</span></label>
+                            <textarea class="form-control font-monospace" id="payload-data" rows="4" placeholder='{"key": "value"}'></textarea>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success" id="send-btn">
+                                <i class="fas fa-paper-plane me-2"></i>Send Webhook
+                            </button>
+                        </div>
+                    </form>
+                    <div id="send-result" class="mt-3" style="display:none;"></div>
+                </div>
+            </div>
+
+            <!-- Event Type Breakdown -->
+            <div class="card border-0 shadow-sm mt-3">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2 text-info"></i>By Event Type</h5>
+                </div>
+                <div class="card-body">
+                    <div id="event-type-list">
+                        <p class="text-muted small mb-0">No data yet</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- How it Works Mini Card -->
+            <div class="card border-0 shadow-sm mt-3 bg-light">
+                <div class="card-body py-3">
+                    <h6 class="fw-semibold mb-2"><i class="fas fa-route me-2 text-secondary"></i>Request Flow</h6>
+                    <div class="d-flex flex-column gap-1 small text-muted">
+                        <div><span class="badge bg-success me-1">POST</span> /api/webhook/receive</div>
+                        <div class="ps-2 text-secondary"><i class="fas fa-arrow-down fa-xs me-1"></i>Signature validated (if header present)</div>
+                        <div class="ps-2 text-secondary"><i class="fas fa-arrow-down fa-xs me-1"></i>Enqueued → 3 worker threads</div>
+                        <div class="ps-2 text-secondary"><i class="fas fa-arrow-down fa-xs me-1"></i>Processed (retry up to 3×)</div>
+                        <div class="ps-2 text-secondary"><i class="fas fa-arrow-down fa-xs me-1"></i>Stored + WebSocket broadcast</div>
+                    </div>
+                    <a href="/learn" class="btn btn-sm btn-outline-secondary mt-2 w-100">
+                        <i class="fas fa-graduation-cap me-1"></i>Learn more
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+<script th:src="@{/js/dashboard.js}"></script>
+</body>
+</html>

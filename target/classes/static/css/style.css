@@ -1,0 +1,118 @@
+/* ========================================
+   Webhook Simulator - Custom Styles
+   ======================================== */
+
+/* Status badge colors */
+.badge-success {
+    background-color: #198754;
+    color: #fff;
+}
+
+.badge-failed {
+    background-color: #dc3545;
+    color: #fff;
+}
+
+.badge-queued {
+    background-color: #0d6efd;
+    color: #fff;
+}
+
+.badge-processing {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+/* Stat cards */
+.stat-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    border-radius: 0.75rem !important;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.1) !important;
+}
+
+.stat-icon {
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Card general polish */
+.card {
+    border-radius: 0.75rem !important;
+}
+
+.card-header {
+    border-radius: 0.75rem 0.75rem 0 0 !important;
+    padding: 1rem 1.25rem;
+}
+
+/* Navbar brand */
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+}
+
+/* Monospace font in tables/pres */
+.font-monospace {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.875em;
+}
+
+/* Recent webhooks table row animation */
+#recent-tbody tr.new-row {
+    animation: highlight-fade 2s ease-out;
+}
+
+@keyframes highlight-fade {
+    0%   { background-color: rgba(13, 110, 253, 0.15); }
+    100% { background-color: transparent; }
+}
+
+/* WebSocket status indicator */
+#ws-status.connected {
+    background-color: #198754 !important;
+}
+
+#ws-status.disconnected {
+    background-color: #dc3545 !important;
+}
+
+/* Event type breakdown bars */
+.event-type-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #0d6efd, #6610f2);
+    transition: width 0.4s ease;
+}
+
+/* Table improvements */
+.table > :not(caption) > * > * {
+    vertical-align: middle;
+}
+
+/* Pre/code blocks */
+pre {
+    font-size: 0.8125rem;
+    border-radius: 0.5rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .stat-icon {
+        width: 44px;
+        height: 44px;
+    }
+    .fs-3 {
+        font-size: 1.4rem !important;
+    }
+}

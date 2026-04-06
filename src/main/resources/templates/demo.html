@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webhook Simulator - Live Demo</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        /* ── Layout ── */
+        .app-panel {
+            border-radius: 0.75rem;
+            min-height: 420px;
+        }
+        .source-panel  { border: 2px solid #0d6efd; }
+        .target-panel  { border: 2px solid #198754; }
+        .panel-header  {
+            border-radius: 0.6rem 0.6rem 0 0;
+            padding: 0.75rem 1rem;
+            font-weight: 700;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+        }
+        .source-header { background: #0d6efd; color: #fff; }
+        .target-header { background: #198754; color: #fff; }
+
+        /* ── Flow channel ── */
+        .flow-channel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            padding: 0 0.5rem;
+            min-width: 90px;
+        }
+        .arrow-label {
+            font-size: 0.65rem;
+            color: #6c757d;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        /* ── Animated arrows ── */
+        .arrow-right, .arrow-left {
+            font-size: 1.6rem;
+            transition: color 0.2s, transform 0.2s;
+            color: #dee2e6;
+        }
+        .arrow-right.active { color: #0d6efd; transform: scale(1.3); }
+        .arrow-left.active  { color: #198754; transform: scale(1.3); }
+
+        @keyframes pulse-right {
+            0%   { color: #dee2e6; }
+            30%  { color: #0d6efd; transform: scale(1.4); }
+            100% { color: #dee2e6; transform: scale(1); }
+        }
+        @keyframes pulse-left {
+            0%   { color: #dee2e6; }
+            30%  { color: #198754; transform: scale(1.4); }
+            100% { color: #dee2e6; transform: scale(1); }
+        }
+        .arrow-right.pulse { animation: pulse-right 0.8s ease-out forwards; }
+        .arrow-left.pulse  { animation: pulse-left  0.8s ease-out forwards; }
+
+        /* ── Step indicator ── */
+        .step-dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: #dee2e6;
+            transition: background 0.3s;
+        }
+        .step-dot.done   { background: #198754; }
+        .step-dot.active { background: #ffc107; }
+
+        /* ── Event rows ── */
+        .event-row {
+            padding: 0.4rem 0.75rem;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.8rem;
+            transition: background 0.3s;
+        }
+        .event-row:last-child { border-bottom: none; }
+        .event-row.new-row { animation: highlight-fade 1.5s ease-out; }
+        @keyframes highlight-fade {
+            0%   { background: rgba(13,110,253,0.12); }
+            100% { background: transparent; }
+        }
+
+        /* ── Activity log ── */
+        .log-entry {
+            display: flex;
+            gap: 0.6rem;
+            align-items: flex-start;
+            padding: 0.35rem 0;
+            font-size: 0.78rem;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .log-entry:last-child { border-bottom: none; }
+        .log-icon { width: 22px; text-align: center; flex-shrink: 0; margin-top: 1px; }
+        .log-time { color: #adb5bd; white-space: nowrap; flex-shrink: 0; }
+        #activity-log { max-height: 220px; overflow-y: auto; }
+
+        /* ── Trigger buttons ── */
+        .trigger-btn { font-size: 0.82rem; }
+
+        /* ── Status badges specific ── */
+        .status-PENDING    { background:#6c757d; }
+        .status-DELIVERED  { background:#0dcaf0; }
+        .status-CONFIRMED  { background:#198754; }
+        .status-FAILED     { background:#dc3545; }
+        .status-SEND_FAILED{ background:#dc3545; }
+        .status-QUEUED     { background:#0d6efd; }
+        .status-PROCESSING { background:#ffc107; color:#212529 !important; }
+        .status-SUCCESS    { background:#198754; }
+
+        /* ── Empty state ── */
+        .empty-state { color:#adb5bd; font-size:0.8rem; padding:2rem 1rem; text-align:center; }
+    </style>
+</head>
+<body class="bg-light">
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/"><i class="fas fa-webhook me-2"></i>Webhook Simulator</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="/"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="/history"><i class="fas fa-history me-1"></i>History</a></li>
+                <li class="nav-item"><a class="nav-link" href="/test"><i class="fas fa-flask me-1"></i>Test</a></li>
+                <li class="nav-item"><a class="nav-link" href="/learn"><i class="fas fa-graduation-cap me-1"></i>Learn</a></li>
+                <li class="nav-item"><a class="nav-link active" href="/demo"><i class="fas fa-play-circle me-1"></i>Demo</a></li>
+            </ul>
+            <span class="navbar-text me-3">
+                <span id="ws-status" class="badge bg-secondary"><i class="fas fa-circle me-1"></i>Connecting...</span>
+            </span>
+        </div>
+    </div>
+</nav>
+
+<div class="container-fluid mt-3 pb-4">
+
+    <!-- Header -->
+    <div class="row mb-3">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div>
+                    <h4 class="fw-bold mb-0"><i class="fas fa-play-circle text-primary me-2"></i>Live Two-App Webhook Demo</h4>
+                    <p class="text-muted small mb-0">Watch a real HTTP webhook travel from the Source App → Target App → callback back to Source, in real time.</p>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" id="clear-btn">
+                    <i class="fas fa-trash me-1"></i>Clear All
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Trigger buttons -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body py-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="small fw-semibold text-muted me-1">Trigger event from source:</span>
+                <button class="btn btn-primary btn-sm trigger-btn" data-event="order.created">
+                    <i class="fas fa-shopping-cart me-1"></i>order.created
+                </button>
+                <button class="btn btn-info btn-sm trigger-btn text-white" data-event="user.registered">
+                    <i class="fas fa-user-plus me-1"></i>user.registered
+                </button>
+                <button class="btn btn-success btn-sm trigger-btn" data-event="payment.processed">
+                    <i class="fas fa-credit-card me-1"></i>payment.processed
+                </button>
+                <button class="btn btn-warning btn-sm trigger-btn" data-event="subscription.cancelled">
+                    <i class="fas fa-times-circle me-1"></i>subscription.cancelled
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Two-app flow panel -->
+    <div class="row g-3 mb-3">
+
+        <!-- SOURCE APP -->
+        <div class="col-lg-5">
+            <div class="app-panel source-panel bg-white shadow-sm">
+                <div class="panel-header source-header">
+                    <i class="fas fa-building me-2"></i>SOURCE APP
+                    <span class="fw-normal opacity-75 ms-1" style="font-size:0.75rem">— Event Producer</span>
+                </div>
+                <div class="p-2 border-bottom bg-light" style="font-size:0.72rem; color:#555;">
+                    <i class="fas fa-info-circle me-1 text-primary"></i>
+                    Fires webhook events when business actions occur. Waits for callback confirmation before updating its own records.
+                </div>
+                <div id="source-events">
+                    <div class="empty-state"><i class="fas fa-mouse-pointer d-block mb-1"></i>Click a trigger button above to fire an event</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FLOW CHANNEL -->
+        <div class="col-lg-2 d-flex align-items-center">
+            <div class="flow-channel w-100">
+
+                <!-- Step 1: Webhook →  -->
+                <div class="arrow-label">① HTTP POST</div>
+                <div class="text-center">
+                    <i class="fas fa-arrow-right arrow-right" id="arrow-right"></i>
+                </div>
+                <div class="arrow-label text-primary" style="font-size:0.6rem;">/api/webhook/receive</div>
+
+                <div class="border-top w-100 my-2"></div>
+
+                <!-- Step indicator dots -->
+                <div class="d-flex gap-1 justify-content-center my-1">
+                    <div class="step-dot" id="dot-1" title="Webhook sent"></div>
+                    <div class="step-dot" id="dot-2" title="Received"></div>
+                    <div class="step-dot" id="dot-3" title="Processing"></div>
+                    <div class="step-dot" id="dot-4" title="Callback sent"></div>
+                    <div class="step-dot" id="dot-5" title="Confirmed"></div>
+                </div>
+                <div class="arrow-label text-muted" id="flow-step-label" style="min-height:2rem;">Idle</div>
+
+                <div class="border-top w-100 my-2"></div>
+
+                <!-- Step 4: Callback ← -->
+                <div class="arrow-label text-muted" style="font-size:0.6rem;">/api/source/callback</div>
+                <div class="text-center">
+                    <i class="fas fa-arrow-left arrow-left" id="arrow-left"></i>
+                </div>
+                <div class="arrow-label">④ HTTP POST callback</div>
+
+            </div>
+        </div>
+
+        <!-- TARGET APP -->
+        <div class="col-lg-5">
+            <div class="app-panel target-panel bg-white shadow-sm">
+                <div class="panel-header target-header">
+                    <i class="fas fa-server me-2"></i>TARGET APP
+                    <span class="fw-normal opacity-75 ms-1" style="font-size:0.75rem">— Webhook Receiver</span>
+                </div>
+                <div class="p-2 border-bottom bg-light" style="font-size:0.72rem; color:#555;">
+                    <i class="fas fa-info-circle me-1 text-success"></i>
+                    Accepts incoming webhooks, validates them, processes async, then POSTs a callback with the result.
+                </div>
+                <div id="target-events">
+                    <div class="empty-state"><i class="fas fa-inbox d-block mb-1"></i>Waiting for incoming webhooks…</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity log -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-2">
+            <h6 class="mb-0 fw-semibold"><i class="fas fa-stream me-2 text-secondary"></i>Activity Log</h6>
+            <span class="badge bg-secondary" id="log-count">0 steps</span>
+        </div>
+        <div class="card-body p-2">
+            <div id="activity-log">
+                <div class="empty-state" style="padding:1rem;">No activity yet — trigger an event above.</div>
+            </div>
+        </div>
+    </div>
+
+</div><!-- /container -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+<script th:inline="none">
+$(document).ready(function () {
+
+    // ─────────────────────────────────────────
+    // WebSocket setup
+    // ─────────────────────────────────────────
+
+    var stompClient = null;
+    var logEntries  = [];
+
+    function connect() {
+        var socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+        stompClient.debug = null;
+
+        stompClient.connect({}, function () {
+            setWsStatus('connected');
+
+            stompClient.subscribe('/topic/source', function (msg) {
+                renderSourceEvents(JSON.parse(msg.body));
+            });
+
+            stompClient.subscribe('/topic/history', function (msg) {
+                renderTargetEvents(JSON.parse(msg.body));
+            });
+
+            stompClient.subscribe('/topic/flow', function (msg) {
+                handleFlowStep(JSON.parse(msg.body));
+            });
+
+            // Initial load
+            $.getJSON('/api/source/events', renderSourceEvents);
+            $.getJSON('/api/webhook/history?limit=20', renderTargetEvents);
+
+        }, function () {
+            setWsStatus('disconnected');
+            setTimeout(connect, 3000);
+        });
+    }
+
+    function setWsStatus(state) {
+        var $el = $('#ws-status');
+        $el.removeClass('bg-secondary bg-success bg-danger');
+        if (state === 'connected') {
+            $el.addClass('bg-success').html('<i class="fas fa-circle me-1"></i>Connected');
+        } else {
+            $el.addClass('bg-danger').html('<i class="fas fa-circle me-1"></i>Disconnected');
+        }
+    }
+
+    // ─────────────────────────────────────────
+    // Flow step handling — drives animation
+    // ─────────────────────────────────────────
+
+    var stepMap = {
+        'WEBHOOK_SENDING':  { dot: 1, label: '① Sending webhook…',       dir: 'right', icon: 'fa-paper-plane', cls: 'text-primary' },
+        'WEBHOOK_SENT':     { dot: 1, label: '① Webhook delivered',       dir: 'right', icon: 'fa-check',       cls: 'text-primary' },
+        'WEBHOOK_RECEIVED': { dot: 2, label: '② Webhook received',        dir: 'right', icon: 'fa-inbox',       cls: 'text-success' },
+        'PROCESSING':       { dot: 3, label: '③ Processing…',             dir: null,    icon: 'fa-cog fa-spin', cls: 'text-warning' },
+        'CALLBACK_SENT':    { dot: 4, label: '④ Sending callback…',       dir: 'left',  icon: 'fa-reply',       cls: 'text-success' },
+        'CONFIRMED':        { dot: 5, label: '⑤ Source confirmed',        dir: 'left',  icon: 'fa-check-circle',cls: 'text-success' },
+        'FAILED':           { dot: 5, label: '⑤ Source notified (failed)',dir: 'left',  icon: 'fa-times-circle',cls: 'text-danger'  },
+        'SEND_FAILED':      { dot: 1, label: 'Send failed',               dir: null,    icon: 'fa-exclamation-triangle', cls: 'text-danger' }
+    };
+
+    function handleFlowStep(step) {
+        var meta = stepMap[step.step];
+        if (!meta) return;
+
+        // Update step label
+        $('#flow-step-label').text(meta.label || step.step);
+
+        // Activate the right/left arrow
+        if (meta.dir === 'right') pulseArrow('right');
+        if (meta.dir === 'left')  pulseArrow('left');
+
+        // Advance step dots
+        for (var i = 1; i <= 5; i++) {
+            var $dot = $('#dot-' + i);
+            $dot.removeClass('done active');
+            if (i < meta.dot)  $dot.addClass('done');
+            if (i === meta.dot) $dot.addClass('active');
+        }
+
+        // Append to activity log
+        appendLog(step, meta);
+    }
+
+    function pulseArrow(dir) {
+        var $arrow = dir === 'right' ? $('#arrow-right') : $('#arrow-left');
+        $arrow.removeClass('pulse');
+        void $arrow[0].offsetWidth; // force reflow
+        $arrow.addClass('pulse');
+        setTimeout(function () { $arrow.removeClass('pulse'); }, 900);
+    }
+
+    // ─────────────────────────────────────────
+    // Activity log
+    // ─────────────────────────────────────────
+
+    var directionIcon = {
+        'source-to-target': '<i class="fas fa-arrow-right text-primary"></i>',
+        'target-to-source': '<i class="fas fa-arrow-left text-success"></i>',
+        'internal':         '<i class="fas fa-cog text-warning"></i>'
+    };
+
+    function appendLog(step, meta) {
+        var $log = $('#activity-log');
+        $log.find('.empty-state').remove();
+
+        var now = new Date();
+        var time = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        var icon = directionIcon[step.direction] || '<i class="fas fa-dot-circle text-muted"></i>';
+        var typeLabel = '<span class="badge bg-light text-dark border" style="font-size:0.65rem;">' + esc(step.eventType) + '</span>';
+
+        var entry = $('<div class="log-entry">')
+            .append('<div class="log-icon">' + icon + '</div>')
+            .append('<div class="log-time">' + time + '</div>')
+            .append('<div class="flex-grow-1">' + typeLabel + ' &nbsp;' + esc(step.detail) + '</div>');
+
+        $log.prepend(entry);
+        logEntries.unshift(step);
+        if (logEntries.length > 100) {
+            logEntries.pop();
+            $log.find('.log-entry:last-child').remove();
+        }
+        $('#log-count').text(logEntries.length + ' steps');
+    }
+
+    // ─────────────────────────────────────────
+    // Source app panel rendering
+    // ─────────────────────────────────────────
+
+    var sourceColors = { 'order.created':'primary', 'user.registered':'info', 'payment.processed':'success', 'subscription.cancelled':'warning' };
+
+    function renderSourceEvents(events) {
+        var $container = $('#source-events');
+        $container.empty();
+        if (!events || events.length === 0) {
+            $container.html('<div class="empty-state"><i class="fas fa-mouse-pointer d-block mb-1"></i>Click a trigger button above to fire an event</div>');
+            return;
+        }
+        events.forEach(function (e) {
+            var color = sourceColors[e.eventType] || 'secondary';
+            var statusClass = 'status-' + e.status;
+            var action = sourceAction(e);
+            var row = $('<div class="event-row">').append(
+                '<div class="d-flex justify-content-between align-items-start">' +
+                    '<div>' +
+                        '<span class="badge bg-' + color + ' me-1" style="font-size:0.65rem;">' + esc(e.eventType) + '</span>' +
+                        '<span class="font-monospace text-muted" style="font-size:0.68rem;">' + esc(e.eventId) + '</span>' +
+                    '</div>' +
+                    '<span class="badge ' + statusClass + ' ms-1" style="font-size:0.65rem;">' + e.status + '</span>' +
+                '</div>' +
+                '<div class="text-muted mt-1" style="font-size:0.72rem;">' +
+                    '<i class="fas ' + action.icon + ' me-1 ' + action.cls + '"></i>' + action.text +
+                '</div>'
+            );
+            $container.append(row);
+        });
+    }
+
+    function sourceAction(e) {
+        switch (e.status) {
+            case 'PENDING':     return { icon:'fa-clock',          cls:'text-muted',    text:'Waiting to send webhook…' };
+            case 'DELIVERED':   return { icon:'fa-paper-plane',    cls:'text-primary',  text:'Webhook delivered — awaiting callback' };
+            case 'CONFIRMED':   return { icon:'fa-check-circle',   cls:'text-success',  text:'Callback received — event confirmed ✓' };
+            case 'FAILED':      return { icon:'fa-times-circle',   cls:'text-danger',   text:'Processing failed — no action taken' };
+            case 'SEND_FAILED': return { icon:'fa-exclamation-triangle', cls:'text-danger', text:'Could not reach target app' };
+            default:            return { icon:'fa-circle',         cls:'text-muted',    text:e.status };
+        }
+    }
+
+    // ─────────────────────────────────────────
+    // Target app panel rendering
+    // ─────────────────────────────────────────
+
+    function renderTargetEvents(records) {
+        var $container = $('#target-events');
+        $container.empty();
+        if (!records || records.length === 0) {
+            $container.html('<div class="empty-state"><i class="fas fa-inbox d-block mb-1"></i>Waiting for incoming webhooks…</div>');
+            return;
+        }
+        records.slice(0, 15).forEach(function (r) {
+            var statusClass = 'status-' + r.status;
+            var processingNote = targetNote(r);
+            var row = $('<div class="event-row">').append(
+                '<div class="d-flex justify-content-between align-items-start">' +
+                    '<div>' +
+                        '<span class="badge bg-light text-dark border me-1" style="font-size:0.65rem;">' + esc(r.eventType) + '</span>' +
+                        '<span class="font-monospace text-muted" style="font-size:0.68rem;">' + esc(r.eventId) + '</span>' +
+                    '</div>' +
+                    '<span class="badge ' + statusClass + ' ms-1" style="font-size:0.65rem;">' + r.status + '</span>' +
+                '</div>' +
+                '<div class="text-muted mt-1" style="font-size:0.72rem;">' +
+                    '<i class="fas ' + processingNote.icon + ' me-1 ' + processingNote.cls + '"></i>' + processingNote.text +
+                '</div>'
+            );
+            $container.append(row);
+        });
+    }
+
+    function targetNote(r) {
+        switch (r.status) {
+            case 'QUEUED':     return { icon:'fa-layer-group',  cls:'text-primary', text:'In queue — waiting for worker thread' };
+            case 'PROCESSING': return { icon:'fa-cog fa-spin',  cls:'text-warning', text:'Worker processing…' };
+            case 'SUCCESS':    return { icon:'fa-check-circle', cls:'text-success', text:'Processed OK — callback sent to source' };
+            case 'FAILED':     return { icon:'fa-times-circle', cls:'text-danger',  text:'Processing failed after ' + r.retryCount + ' retries — callback sent' };
+            default:           return { icon:'fa-circle',       cls:'text-muted',   text:r.status };
+        }
+    }
+
+    // ─────────────────────────────────────────
+    // Trigger buttons
+    // ─────────────────────────────────────────
+
+    $('.trigger-btn').on('click', function () {
+        var eventType = $(this).data('event');
+        var $btn = $(this);
+        $btn.prop('disabled', true);
+
+        $.ajax({
+            url: '/api/source/trigger',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ eventType: eventType }),
+            complete: function () {
+                setTimeout(function () { $btn.prop('disabled', false); }, 500);
+            }
+        });
+    });
+
+    // ─────────────────────────────────────────
+    // Clear button
+    // ─────────────────────────────────────────
+
+    $('#clear-btn').on('click', function () {
+        $.ajax({ url: '/api/source/events',   method: 'DELETE' });
+        $.ajax({ url: '/api/webhook/history', method: 'DELETE' });
+        logEntries = [];
+        $('#activity-log').html('<div class="empty-state" style="padding:1rem;">No activity yet — trigger an event above.</div>');
+        $('#log-count').text('0 steps');
+        $('#flow-step-label').text('Idle');
+        for (var i = 1; i <= 5; i++) $('#dot-' + i).removeClass('done active');
+    });
+
+    // ─────────────────────────────────────────
+    // XSS helper
+    // ─────────────────────────────────────────
+
+    function esc(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ─────────────────────────────────────────
+    // Boot
+    // ─────────────────────────────────────────
+
+    connect();
+});
+</script>
+</body>
+</html>
